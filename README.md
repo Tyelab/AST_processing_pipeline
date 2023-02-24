@@ -115,15 +115,31 @@ b.	Update the c.folderNameCell to the correct folders in your data directory.
 c.	This script will open the first frame of a video and allow you label the LED location by clicking on the image to define a region of interest (ROI). Each region of interest is expected to be a square (4 connected points).  After you create the square, hover over the area and your cursor will change from a circle to a double arrow.  Double click on the square to save the ROI and move onto the next LED.
 d.	In AST paradigm, LED1 is the light closest to the port, LED 5 is farthest from port.  This orientation helps because sometimes the video camera is upside down, so the port is on the other side of the video.
 11.	After you create the ROIs, the program will attempt to identify when the led is on using a change to the pixel values and output a png showing the number of times each light was on. In clean data, this works quite well.  However, if illumination changes or something (tether/mouse/experimenter’s hands) blocks the LED, you will not get the expected number of trials for each stimulus type.  
+
 a.	You will need to manually check that these times line up with expectations by playing back the video at those times.  The matlab code to help do this is the function check_frames_by_LED.m
+
 b.	If you got no LED detections or something looks horribly wrong, here is a quick matlab hack to try and detect using just the raw pixel values.  (Taken from checkFrames_by_LED.m) 
+
 i.	Load the LEDevents.mat file in matlab
-ii.	figure; plot(LEDevents.rawLEDs(:,1))hold on;    plot(LEDevents.evCellLED{1,1},LEDevents.rawLEDs(LEDevents.evCellLED{1,1},1),'go','MarkerFaceColor','g')    plot(LEDevents.evCellLED{1,2},LEDevents.rawLEDs(LEDevents.evCellLED{1,2},1),'ro','MarkerFaceColor','r')    plot(LEDevents.evCellLED{2,1},LEDevents.rawLEDs(LEDevents.evCellLED{2,1},1),'ko')    legend('LED-1','LED-1 onset (Rew)','LED-1 offset (Rew)', 'LED-2 onset (Port)')
+
+ii.	figure; 
+
+plot(LEDevents.rawLEDs(:,1))hold on;    
+
+plot(LEDevents.evCellLED{1,1},LEDevents.rawLEDs(LEDevents.evCellLED{1,1},1),'go','MarkerFaceColor','g')    
+
+plot(LEDevents.evCellLED{1,2},LEDevents.rawLEDs(LEDevents.evCellLED{1,2},1),'ro','MarkerFaceColor','r')    
+
+plot(LEDevents.evCellLED{2,1},LEDevents.rawLEDs(LEDevents.evCellLED{2,1},1),'ko') ;
+
+legend('LED-1','LED-1 onset (Rew)','LED-1 offset (Rew)', 'LED-2 onset (Port)')
+
 title(Disc7folder,'Interpreter','none')
+
 xlabel(‘Frame Number’); ylabel(‘brightness’)
- whole session
- (zoom view)
+
 Blue spikes show change in LED1 illumination over time, green dot = detected onset, red = detected offset.  If you don’t get the expected red/green placement, you can zoom into the figure and use datatips to manually identify onset and offset. This sucks but it generally works. 
+
 12.	This LED data is used to align video data to trials; you need time information about what tones/stimuli were played to know when a trial started in the video unless the video is synched to the medPC data. 
 
 Process the pose estimates to get freeze/dash heatmaps
