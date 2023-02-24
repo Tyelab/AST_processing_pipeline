@@ -14,13 +14,20 @@ Below is an example of how to convert at the command line in a terminal window
 ffmpeg -i input.asf -vcodec libx264 -crf 23 -pix_fmt yuv420p -vf scale=w=1280:h=720 output.mp4
 
 -i 		is the file you want to convert (input file)
+
 -vcodec 	tells which codec library you want to use, stick to libx264
 Codec stands for code/decode and is a program that compresses your video so it can be stored and moved around, then decodes it for viewing.  It makes the size of the file manageable. (this option is an alias for 
+
 -codec:v, which applies to the video part of your video 
+
 -codec:a would apply to the audio part)
+
 -crf	constant rate factor is an option available in the libex264 encoder to set the output quality, ranges from 0 (best lossless quality, largest file size) to 51 (poorest quality, smallest file size)** 
+
 -pix_fmt 	set the pixel format. All videos contain a value called pixel format that tells you about how colors are ordered and organized.  There are many options here but this should work for what we need.
+
 -vf	filter the video, this allows you to rescale (can use either option "scale=1280:720"  or scale=w=1280:h=720, they mean the same thing.)
+
 The last part of the command is the name of the output file. It does not get an option flag. 
 The output.mp4 can include the full directory path if you want to put it somewhere else. 
 E.g., FFBatch/output.mp4
