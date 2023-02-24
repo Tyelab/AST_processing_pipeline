@@ -132,8 +132,7 @@ d.	In AST paradigm, LED1 is the light closest to the port, LED 5 is farthest fro
 
   i.	Load the LEDevents.mat file in matlab
 
-  ii.	```
-  figure; 
+  ii.	figure; 
   plot(LEDevents.rawLEDs(:,1))hold on;    
   plot(LEDevents.evCellLED{1,1},LEDevents.rawLEDs(LEDevents.evCellLED{1,1},1),'go','MarkerFaceColor','g')    
   plot(LEDevents.evCellLED{1,2},LEDevents.rawLEDs(LEDevents.evCellLED{1,2},1),'ro','MarkerFaceColor','r')    
@@ -141,7 +140,7 @@ d.	In AST paradigm, LED1 is the light closest to the port, LED 5 is farthest fro
   legend('LED-1','LED-1 onset (Rew)','LED-1 offset (Rew)', 'LED-2 onset (Port)')
   title(Disc7folder,'Interpreter','none')
   xlabel(‘Frame Number’); ylabel(‘brightness’)
-  ```
+  
 
 Blue spikes show change in LED1 illumination over time, green dot = detected onset, red = detected offset.  If you don’t get the expected red/green placement, you can zoom into the figure and use datatips to manually identify onset and offset. This sucks but it generally works. 
 
