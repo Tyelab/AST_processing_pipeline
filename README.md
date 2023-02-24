@@ -132,7 +132,7 @@ d.	In AST paradigm, LED1 is the light closest to the port, LED 5 is farthest fro
 
   i.	Load the LEDevents.mat file in matlab
 
-  ii.	'''
+  ii.	```
   figure; 
   plot(LEDevents.rawLEDs(:,1))hold on;    
   plot(LEDevents.evCellLED{1,1},LEDevents.rawLEDs(LEDevents.evCellLED{1,1},1),'go','MarkerFaceColor','g')    
