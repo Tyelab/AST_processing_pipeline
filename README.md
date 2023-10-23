@@ -78,7 +78,7 @@ You will need :
  - the path to your videos, 
  -	the path to your output area 
  -	the SLEAP model for running tracking.
- -	
+   
 NOTE: You should run this matlab function through a linux shell if you plan to run the sleap tracking on a linux machine, otherwise the paths will not be convertible!  If you want to run on a Windows machine, you can open matlab in windows.  The paths will be created based on whatever machine matlab was running on.
 ```
 ### example top-down Command line call (should normally be all on one line if running in the terminal):
