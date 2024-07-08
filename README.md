@@ -8,7 +8,7 @@ Compute freeze/dash behavior from videos for Fergil Mill's AST project
 -	Some steps can be run on a Windows workstation but others can only be run on a Linux workstation (i.e., the cluster) such as by using mobaXterm.
 
 
-Initial steps
+## Initial steps: video conversion
 1.	The first step is to gather the backup camera videos or other behavioral videos that you want to process. You will need the directory path to your videos in a later step.
 You may need to convert them into mp4 or some other type of video that SLEAP can import.
 Note that h264 encoding can be read by MATLAB but h265 cannot.
@@ -40,6 +40,7 @@ E.g., FFBatch/output.mp4
 Can set up as a batch script to run through linux shell see the matlab code:
 makeScript_convert_asf_264.m  which produces the example convert_h264.sh shell script located in /scripts/.  When you run this code, this script is saved to the same folder as your videos.
 
+## SLEAP processing
 2.	Get together a set of labeled data in SLEAP, ideally corresponding to your behavioral videos.  The closer the labeled data is to your videos (e.g. lighting/resolution/mouse type/cagetype/etc.) the better the automated tracking will be.  It is often useful to label even 100 frames from each video you wish to track to get better correlation.
 a.	For a single animal in a MEDPC box, you can start by using Fergil’s model.  At last count there were 6645 (!) labeled frames in this model.  
 Sleap file is here:
@@ -103,8 +104,9 @@ where nameofscript is the name of your shell script.   Alternatively, copy and p
 Note, the matlab script will automatically make your nameofscrip.sh “executable” by using this command at the terminal window
 `chmod u+x nameofscrip.sh`
 
-8.	After those copy, you can use the MATLAB function “copyNewPredictions” in "make_analysis_folder_copy_files.m" to copy from the predictions folder into your folder structure.
 
+## Create folder structure
+8.	After those copy, you can use the MATLAB function “copyNewPredictions” in "make_analysis_folder_copy_files.m" to copy from the predictions folder into your folder structure.
 
 *Setting up folders and adding data*
 9.	While the SLEAP script is tracking the poses, you can set up the rest of your folders. See 
@@ -114,8 +116,7 @@ function “createProcessingFolder_copyVideos” in the matlab function make_ana
 It is helpful to name the folders based on the names of the original videos. 
 In this project, we have basically assumed that all your files will have the same ‘root’ filename. For example, if your video is called 20210927_FCD1_G3B2_C6_J588.asf, then everything that follows will be stored in a folder called (20210927_FCD1_G3B2_C6_J588/) and contain the same base in every file name (20210927_FCD1_G3B2_C6_J588_SL_calc.mat).
 
-*Identify LED on/off times from videos*
-
+## Identify LED on/off times from videos
 10.	This step can be done prior to SLEAP tracking completion.  If your video is already time synchronized to your other experimental data, you do not need to do this step.  The purpose of identifying when LED turns on or off is so that you know when a given event occurred, e.g. stimulus tone played.  In your experimental paradigm, each LED should be associated with a given event.  For example, in AST:
 a.	LED 1 = reward tone
 b.	LED 2 = port entry detected
@@ -152,7 +153,7 @@ Blue spikes show change in LED1 illumination over time, green dot = detected ons
 
 13.	This LED data is used to align video data to trials; you need time information about what tones/stimuli were played to know when a trial started in the video unless the video is synched to the medPC data. 
 
-Process the pose estimates to get freeze/dash heatmaps
+## Process the pose estimates to get freeze/dash heatmaps
 14.	Each folder should contain the prediction h5 from SLEAP and a copy of either the original movie (.asf) or its altered form used for SLEAP tracking (.mp4).
 a.	Generally, it’s better to avoid copying files into folders.  A better approach here would be modify the code below and incorporate the full path to a folder containing your videos or LED results.  That way you don’t need to take up server space with copies of identical data!
 15.	You are ready to calculate features from the pose estimates. We specifically calculated freeze and dash behavior.  
@@ -163,16 +164,19 @@ a.	See \\nadata.snl.salk.edu\snlkt_ast\AlphaTracker\AlphaTracker code\LK_fmat_tr
 b.	\\nadata.snl.salk.edu\snlkt_ast\AlphaTracker\AlphaTracker code\LK_fmat_trackDataVidGen_oldEphys_v02b.m (in this version, we remove freeze labels on animals that freeze in port.  Freeze is typically considered a fear behavior and we did not have resolution in the pose estimates to identify motion due to licking at port. Instead, we just don’t label a freeze when the LED that indicates port entry is ON.)
 
 16.	The matlab functions listed above allows you to 
-a.	Convert the h5 file into a matlab structure and extract the necessary information (dataGen)
-b.	Identify landmarks in the arena, currently finds the 4 corners of the cage floor and the location of the reward spout.  (calcGen)
-This data is then used to compute certain meta features, such as 
-i.	the speed the animal is moving, 
-ii.	whether that speed corresponds to freezing or dashing behavior, 
-iii.	animal’s distance from various locations (e.g. port).
-c.	Generate videos to verify behavior labeling 
-i.	(vidGen) Full video with pose estimates and frame number, along with indicator of freezing/dashing markers
-ii.	(vidCS_shocks) Same video but for CS-Shock only portions only
-iii.	(visGen) Visualizer video showing the labeled video in upper left subplot and two views of the scrolling visual of the average mouse motion compared to threshold settings used to determining freezing/dashing behaviors. (this is generally working in later versions but not consistently working in earlier versions.) Screenshot of resulting video:
+ -	Convert the h5 file into a matlab structure and extract the necessary information (dataGen)
+ -	Identify landmarks in the arena, currently finds the 4 corners of the cage floor and the location of the reward spout.  (calcGen)
+ -	Generate videos to verify behavior labeling
+
+The data generated by dataGen and calcGen is then used to compute certain meta features, such as 
+ 1.	the speed the animal is moving, 
+ 2.	whether that speed corresponds to freezing or dashing behavior, 
+ 3.	animal’s distance from various locations (e.g. port).
+
+## Video generation flags within the trackDataVidGen matlab code
+1.	(vidGen) Full video with pose estimates and frame number, along with indicator of freezing/dashing markers
+2.	(vidCS_shocks) Same video but for CS-Shock only portions only
+3.	(visGen) Visualizer video showing the labeled video in upper left subplot and two views of the scrolling visual of the average mouse motion compared to threshold settings used to determining freezing/dashing behaviors. (this is generally working in later versions but not consistently working in earlier versions.) Screenshot of resulting video:
  
 17.	Each of the above will generate a file and save it to the appropriate folder (subject-based naming convention).
 18.	Next generate trial-aligned heatmaps of the freezing/dashing behavior for each subject: \\nadata.snl.salk.edu\snlkt_ast\AlphaTracker\AlphaTracker code\ LK_plotFreezeDashHeatmaps_NPX_Disc4_v02.m 
