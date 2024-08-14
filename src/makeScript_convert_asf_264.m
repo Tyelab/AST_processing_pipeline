@@ -82,7 +82,7 @@ end
 fprintf(fid,'#! /bin/bash -p\n'); % header line for linux systems
 txt = sprintf('# This file was generated automatically on %s using the matlab function: %s\n', date, mfilename);
 fprintf(fid,txt);
-fprintf(fid,'This is a batch script for converting video files to mp4. \n');
+fprintf(fid,'# This is a batch script for converting video files to mp4. \n');
 % loop through the videos in your folder
 for ii = 1:numel(vids)
 if strcmp(vids(ii).name,'.') || strcmp(vids(ii).name,'..'); continue; end
@@ -98,8 +98,8 @@ fprintf('Done!\n\n')
 
 if isunix
     % this line attempts to make the script an executable     
-    system(sprintf('chmod u+x %s',script_path))
+    system(sprintf('chmod u+x %s',outfile))
 end
 
 %fprintf('Reminder: At a linux shell command line type: chmod u+x convert_h264_test.sh\n')
-fprintf('Run the script in a linux shell.\n')
+fprintf('Run the script in a linux shell: \n\t%s\n',outfile)
