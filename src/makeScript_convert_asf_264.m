@@ -60,14 +60,14 @@ function makeScript_convert_asf_264
 % sourceVideoDir ='\\nadata.snl.salk.edu\snlkt_ast\Miniscope\expAnalysis\20220803_D1_DiscD6_backupCam\sourceFiles\';
 % or have the user navigate to their folder:
 
-
+% USER SHOULD UPDATE THESE PATHS:
 if ispc
-    topdir = '\\nadata.snl.salk.edu\snlkt_ast\Miniscope\expAnalysis\20220803_D1_DiscD6_backupCam\sourceFiles\';
+    topdir = '\\nadata.snl.salk.edu\snlkt\ast\Miniscope\expAnalysis\20220803_D1_DiscD6_backupCam\sourceFiles\';
 elseif isunix
     topdir = ('/snlkt/ast/Miniscope/expAnalysis/20220803_D1_DiscD6_backupCam/sourceFiles/');
 end
 sourceVideoDir = uigetdir(topdir,'Select the location of your source videos (*.asf)');
-vids = dir(fullfile(sourceVideoDir,'*.asf')); 
+vids = dir(fullfile(sourceVideoDir,'*.asf'));  % make sure file extension matches!
 if isempty(vids), error('Did you set the file type correctly in %s? no asf files found in %s', mfilename, sourceVideoDir);end
 
 outfile = fullfile(sourceVideoDir, 'convert_h264_test.sh');
@@ -79,7 +79,8 @@ else
     error('File exists! (Delete the old or give it a new name.)')
 end
 
-fprintf(fid,'#! /bin/bash -p\n'); % header line for linux systems
+% print out comments and header line to the shell script (for linux systems)
+fprintf(fid,'#! /bin/bash -p\n'); 
 txt = sprintf('# This file was generated automatically on %s using the matlab function: %s\n', date, mfilename);
 fprintf(fid,txt);
 fprintf(fid,'# This is a batch script for converting video files to mp4. \n');
@@ -102,4 +103,4 @@ if isunix
 end
 
 %fprintf('Reminder: At a linux shell command line type: chmod u+x convert_h264_test.sh\n')
-fprintf('Run the script in a linux shell: \n\t%s\n',outfile)
+fprintf('Run this script in a linux shell: \n\t%s\n',outfile)
