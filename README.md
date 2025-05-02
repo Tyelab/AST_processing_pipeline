@@ -186,3 +186,5 @@ b.	The data that is loaded comes from the freeze/dash in the previous step (17).
 c.	These plots are saved to the main processing folder rather than to given subject folders.  
 
 
+## To do 
+1. add citation
