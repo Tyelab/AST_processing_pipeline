@@ -1,0 +1,98 @@
+function [curFrame] = fmat_plotPoints(c, data, curFrameNum, curFrame, colorStyle)
+% fmat_plotPoints  Overlay pose keypoint markers onto a video frame.
+%
+% Draws a filled circle at each tracked keypoint position for a single
+% video frame. Circle color is determined by the colorStyle argument,
+% supporting per-point colors, confidence-mapped colors, or a single
+% uniform color.
+%
+% SYNTAX
+%   curFrame = fmat_plotPoints(c, data, curFrameNum, curFrame, colorStyle)
+%
+% INPUTS
+%   c           - settings structure with fields:
+%                   .pointColors   - Nx1 cell array of [R G B] color
+%                                    vectors (0-255) used in 'multicolor'
+%                                    mode; one entry per keypoint
+%                   .confColorMap  - 256x3 matrix of [R G B] values (0-255)
+%                                    mapping confidence (0-1) to a color;
+%                                    low confidence maps to row 1,
+%                                    high confidence maps to row 256
+%   data        - struct with fields:
+%                   .tracks        - [frames x points x 2] numeric array
+%                                    of (x,y) keypoint coordinates in pixels
+%                   .point_scores  - [frames x points] numeric array of
+%                                    per-point confidence scores in [0, 1];
+%                                    values > 1 are clamped to 1
+%   curFrameNum - integer, 1-based index of the frame to annotate;
+%                 used to index into data.tracks and data.point_scores
+%   curFrame    - H x W x 3 uint8 RGB image to annotate (modified in place)
+%   colorStyle  - string controlling circle color:
+%                   'multicolor'  : each point uses c.pointColors{pointNum}
+%                   'confidence'  : color mapped from c.confColorMap using
+%                                   the point's confidence score; low
+%                                   confidence = red, high = blue (or per
+%                                   whatever colormap is in c.confColorMap)
+%                   any other string (e.g. 'red', 'white', [R G B]):
+%                                   all points drawn in that color
+%
+% OUTPUT
+%   curFrame    - H x W x 3 uint8 RGB image with keypoint circles drawn
+%
+% NOTES
+%   - Points with NaN coordinates are silently skipped (tracking dropout)
+%   - All circles are drawn with radius 3 pixels at full opacity
+%   - Confidence scores are clamped to [1/256, 1] before colormap lookup
+%     to avoid a zero index into confColorMap
+%   - If confColorMap lookup fails, the point is drawn black and a warning
+%     is issued; this typically indicates a malformed c.confColorMap
+%
+% EXAMPLE
+%   % Draw all points color-coded by tracking confidence
+%   curFrame = fmat_plotPoints(c, mouseData, 150, curFrame, 'confidence');
+%
+%   % Draw all points in white
+%   curFrame = fmat_plotPoints(c, mouseData, 150, curFrame, 'white');
+%
+%   % Draw each point in its designated per-point color
+%   curFrame = fmat_plotPoints(c, mouseData, 150, curFrame, 'multicolor');
+%
+% SEE ALSO
+%   fmat_plotLines, insertShape, annotate_frame
+
+
+POINT_RADIUS  = 3;
+POINT_OPACITY = 1;
+POINT_WIDTH   = 1;
+
+for pointNum = 1:size(data.tracks,2)
+    pointX = data.tracks(curFrameNum,pointNum,1);
+    pointY = data.tracks(curFrameNum,pointNum,2);
+    confidence = data.point_scores(curFrameNum,pointNum);
+
+    if isnan(pointX)
+        continue
+    end
+
+    if isequal(colorStyle,'multicolor')
+        curFrame = insertShape(curFrame,'FilledCircle', [pointX pointY POINT_RADIUS], 'LineWidth', POINT_WIDTH, 'Color', c.pointColors{pointNum},'opacity', POINT_OPACITY);
+    elseif isequal(colorStyle,'confidence')
+        % clamp confidence to valid colormap range before computing index
+        confidence = max(1/256, min(1, confidence));
+        confColorIndex = round(confidence * 256);
+        % confColorIndex is now guaranteed in [1, 256];
+
+        try
+            confColor = c.confColorMap(confColorIndex, :);
+        catch ME
+            warning('fmat_plotPoints: confColorMap lookup failed at index %d: %s', confColorIndex, ME.message);
+            confColor = [0 0 0]; % black indicates no confidence information
+        end
+        curFrame = insertShape(curFrame,'FilledCircle', [pointX pointY POINT_RADIUS], 'LineWidth', POINT_WIDTH, 'Color', confColor, 'opacity', POINT_OPACITY);
+    else 
+        curFrame = insertShape(curFrame,'FilledCircle', [pointX pointY POINT_RADIUS], 'LineWidth', POINT_WIDTH, 'Color', colorStyle, 'opacity', POINT_OPACITY);
+    end
+
+end
+%
+end

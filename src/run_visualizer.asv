@@ -1,0 +1,224 @@
+function run_visualizer(c, folderName)
+% run_visualizer  Generate a visualizer video for a single tracking folder.
+%
+% Renders a composite video showing:
+%   - The labeled behavioral video (top-left panel)
+%   - A full-session movement trace with freeze/dash overlays (bottom panel)
+%   - A scrolling trace centered on the current CS-shock window (right panel)
+%
+% SYNTAX:
+%   run_visualizer(c, folderName)
+%
+% INPUTS:
+%   c          - Settings structure (see track_freeze_dash_vid_generator).
+%                Required fields:
+%                  c.outputDir                    - root output directory
+%                  c.vidDir                       - directory of input videos
+%                  c.saveMouseDataNameSuffix      - suffix for mouseData .mat file
+%                  c.saveCalcNameSuffix           - suffix for calc .mat file
+%                  c.outputVisualizerVidFileSuffix- suffix for output video
+%                  c.outputVidFrameRate           - frame rate of output video
+%                  c.labelVidLengthFrames         - expected length of labelled video
+%                  c.freezeSettings.thresh_cm     - freeze threshold (cm)
+%                  c.dashSettings.thresh_cm       - dash threshold (cm)
+%   folderName - Name of the folder/file to process (string or char).
+%
+% OUTPUTS:
+%   Video file written to: <c.outputDir>/<folderName>/<folderName><c.outputVisualizerVidFileSuffix>
+%
+% DEPENDENCIES:
+%   check_settings_matfile, draw_bout_highlights, point_to_line_distance
+%
+% See also: track_freeze_dash_vid_generator, check_settings_matfile
+
+% =========================================================================
+% --- Load required data --------------------------------------------------
+% =========================================================================
+folderPath = fullfile(c.outputDir, folderName);
+mouseDataPath = fullfile(folderPath, [folderName c.saveMouseDataNameSuffix]);
+calcPath      = fullfile(folderPath, [folderName c.saveCalcNameSuffix]);
+
+assert(exist(mouseDataPath, 'file') == 2, ...
+    'run_visualizer: mouseData file not found:\n  %s', mouseDataPath);
+assert(exist(calcPath, 'file') == 2, ...
+    'run_visualizer: calc file not found:\n  %s', calcPath);
+
+load(mouseDataPath, 'mouseData');
+load(calcPath, 'calc');
+
+% =========================================================================
+% --- Determine CS-shock windows ------------------------------------------
+% =========================================================================
+ledEventsPath = fullfile(folderPath, [folderName '_LEDevents.mat']);
+if exist(ledEventsPath, 'file')
+    load(ledEventsPath, 'LEDevents');
+    CS_shocks = [LEDevents.evCellLED{3,1} LEDevents.evCellLED{3,2}];
+else
+    warning('run_visualizer: No LED events file found for %s. Using full video as single window.', folderName);
+    CS_shocks = [1 c.labelVidLengthFrames];
+end
+
+% =========================================================================
+% --- Per-folder settings override ----------------------------------------
+% =========================================================================
+c = check_settings_matfile(c, folderPath, folderName);
+
+% =========================================================================
+% --- Open input / output videos ------------------------------------------
+% =========================================================================
+inputVideoPath = fullfile(c.vidDir, folderName);
+assert(exist(inputVideoPath, 'file') == 2, ...
+    'run_visualizer: Input video not found:\n  %s', inputVideoPath);
+
+inputLabelledVideo    = VideoReader(inputVideoPath);
+outputVideoPath       = fullfile(folderPath, [folderName c.outputVisualizerVidFileSuffix]);
+outputVideo           = VideoWriter(outputVideoPath); %#ok<TNMLP>
+outputVideo.FrameRate = c.outputVidFrameRate;
+open(outputVideo);
+disp(['run_visualizer: Processing ' folderName ' ...'])
+
+% --- Initialize counters ---
+curCS_shock  = 1;
+curFrameNum  = 1;
+dataLength   = size(mouseData.tracks, 1);
+totalFrameNum = dataLength;
+
+% --- Select data to plot ---
+dataSet     = calc.smoothed.cm.pointDistAllAvg;
+highlights1 = calc.smoothed.cm.freezing;
+highlights2 = calc.smoothed.cm.dashing;
+
+t     = 1:totalFrameNum;
+y     = dataSet(t);
+index = 1:totalFrameNum;
+i     = CS_shocks(curCS_shock, 1);
+
+% --- Set up figure layout ---
+hFig = figure('Position', [1 49 1920 955], 'Visible', 'off');
+ax1  = subplot(3, 5, [1:3 6:8]);   % Labeled video frame
+ax2  = subplot(3, 5, 11:15);       % Full-session plot
+ax3  = subplot(3, 5, [4:5 9:10]);  % Scrolling plot
+ax2.NextPlot = 'add';
+ax3.NextPlot = 'add';
+
+% Display first frame
+vidFrame = readFrame(inputLabelledVideo);
+image(vidFrame, 'Parent', ax1);
+ax1.Visible = 'off';
+
+% --- Draw freeze bout highlights (red) ---
+boutHeight = max(calc.smoothed.cm.pointDistAllAvg);
+draw_bout_highlights(ax2, ax3, highlights1.timestamps, boutHeight, [1 .8 .8]);
+
+% --- Draw dash bout highlights (yellow) ---
+draw_bout_highlights(ax2, ax3, highlights2.timestamps, boutHeight, [1 .95 .7]);
+
+% --- Plot full-session trace ---
+plot(ax2, t, y, 'Color', [0.5 0.5 0.5]);
+k = plot(ax2, t(1:index(i)), y(1:index(i)), '-k');
+yline(ax2, c.freezeSettings.thresh_cm, 'Color', 'red',              'LineStyle', '--');
+yline(ax2, c.dashSettings.thresh_cm,   'Color', [0.85 0.325 0.098], 'LineStyle', '--');
+
+% --- Plot scrolling trace ---
+plot(ax3, t, y, 'Color', [0.5 0.5 0.5]);
+k_scroll = plot(ax3, t(1:index(i)), y(1:index(i)), '-k');
+yline(ax3, c.freezeSettings.thresh_cm, 'Color', 'red',              'LineStyle', '--');
+yline(ax3, c.dashSettings.thresh_cm,   'Color', [0.85 0.325 0.098], 'LineStyle', '--');
+
+% --- Fix axes limits ---
+ax2.XLim = [t(1) t(end)];
+ax2.YLim = [0 100 * c.freezeSettings.thresh_cm];
+ax3.YLim = [0  10 * c.freezeSettings.thresh_cm];
+ax3.Visible = 'on';
+
+line_scroll = plot(ax3, [i i], ax3.YLim, 'Color', [0.466 0.674 0.188], 'LineWidth', 1.0);
+
+% --- Progress bar (closed in finally-equivalent cleanup) ---
+progBar = 0;
+f = waitbar(progBar, ['Visualizer: ' folderName]);
+
+try
+    %% Animate
+    while hasFrame(inputLabelledVideo) && curFrameNum < c.labelVidLengthFrames
+
+        % Hide current scroll line before redraw
+        line_scroll.Visible = 'off';
+
+        % Read and display current video frame
+        curFrame = readFrame(inputLabelledVideo);
+        image(curFrame, 'Parent', ax1);
+
+        % Update full-session and scrolling traces
+        set(k,        'XData', t(1:index(i)), 'YData', y(1:index(i)));
+        set(k_scroll, 'XData', t(1:index(i)), 'YData', y(1:index(i)));
+
+        % Redraw scroll position line and update window
+        delete(line_scroll);
+        line_scroll = plot(ax3, [i i], ax3.YLim, 'Color', [0.466 0.674 0.188], 'LineWidth', 1.0);
+        ax3.XLim = [i - 100, i + 100];
+
+        % Write frame to output video
+        F = getframe(hFig);
+        writeVideo(outputVideo, F);
+
+        % Advance counters
+        curFrameNum = curFrameNum + 1;
+        i           = i + 1;
+        waitbar(curFrameNum / totalFrameNum, f);
+
+        % Advance CS_shock window if we have moved past the current one
+        inCurrentWindow = i <= dataLength && ...
+            any(i >= CS_shocks(:,1) & i <= CS_shocks(:,1) + 10 * inputLabelledVideo.FrameRate);
+
+        if ~inCurrentWindow
+            curCS_shock = curCS_shock + 1;
+            if curCS_shock <= size(CS_shocks, 1)
+                i = CS_shocks(curCS_shock, 1);
+                fprintf('run_visualizer: Advanced to CS_shock window %d (frame %d)\n', curCS_shock, i);
+            else
+                break;
+            end
+        end
+    end
+
+catch ME
+    warning('run_visualizer: Error during animation for %s: %s', folderName, ME.message);
+end
+
+% --- Cleanup (always runs) ---
+close(outputVideo);
+close(f);
+close(hFig);
+disp(['run_visualizer: Completed ' folderName])
+end
+
+
+%% Helper: draw bout highlight rectangles on both axes
+function draw_bout_highlights(ax_full, ax_scroll, timestamps, boutHeight, color)
+% draw_bout_highlights(ax_full, ax_scroll, timestamps, boutHeight, color)
+%
+% Draws shaded rectangles on both the full-session and scrolling axes
+% for each bout defined in timestamps.
+%
+% INPUTS:
+%   ax_full, ax_scroll - axes handles
+%   timestamps         - cell {1,1} = onsets, {1,2} = offsets (frame indices)
+%   boutHeight         - rectangle height (y-axis units)
+%   color              - 1x3 RGB face/edge color
+
+onsets  = timestamps{1, 1};
+offsets = timestamps{1, 2};
+
+if numel(onsets) ~= numel(offsets)
+    warning('draw_bout_highlights: onset/offset count mismatch, skipping highlights.');
+    return;
+end
+
+for boutNum = 1:numel(onsets)
+    x = onsets(boutNum);
+    w = offsets(boutNum) - onsets(boutNum);
+    pos = [x, 0, w, boutHeight];
+    rectangle(ax_full,   'Position', pos, 'FaceColor', color, 'EdgeColor', color, 'LineWidth', 0.1);
+    rectangle(ax_scroll, 'Position', pos, 'FaceColor', color, 'EdgeColor', color, 'LineWidth', 0.1);
+end
+end

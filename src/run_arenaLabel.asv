@@ -1,0 +1,128 @@
+function run_arenaLabel(c, folderName)
+% run_arenaLabel  Interactively label arena corners and port for one folder.
+%
+% Displays the first frame of the session video and prompts the user to
+% draw a polygon around the arena floor corners and place a point on the
+% port spout. Computes the pixel-to-cm conversion factor from the labeled
+% corners and saves the result as an Arena .mat file.
+%
+% Skips processing if the Arena file already exists.
+%
+% SYNTAX:
+%   run_arenaLabel(c, folderName)
+%
+% INPUTS:
+%   c          - Settings structure (see track_freeze_dash_vid_generator).
+%                Required fields:
+%                  c.outputDir              - root output directory
+%                  c.vidDir                 - directory containing input video
+%                  c.saveArenaNameSuffix    - suffix for Arena .mat file
+%                  c.arenaWidth             - known arena width in cm
+%   folderName - Folder/file name to process (string or char).
+%
+% OUTPUTS:
+%   Arena .mat file saved to:
+%     <c.outputDir>/<folderName>/<folderName><c.saveArenaNameSuffix>
+%
+%   Arena struct fields:
+%     Arena.Box.position      - [N×2] corner coordinates (pixels)
+%     Arena.Port.position     - [1×2] port spout coordinate (pixels)
+%     Arena.conversionFactor  - scalar cm/pixel conversion factor
+%
+% NOTES:
+%   - Conversion factor is derived from the mean of the two shortest polygon
+%     sides, assumed to be the arena width edges.
+%   - Requires at least 4 polygon corners.
+%
+% See also: run_vidGen, run_vidCS_events, check_settings_matfile
+
+% =========================================================================
+% --- Skip if already done ------------------------------------------------
+% =========================================================================
+folderPath    = fullfile(c.outputDir, folderName);
+arenaFilePath = fullfile(folderPath, [folderName c.saveArenaNameSuffix]);
+
+% --- Skip if already done ---
+if exist(arenaFilePath, 'file')
+    disp(['run_arenaLabel: Arena file already exists for ' folderName ', skipped.'])
+    return;
+end
+
+% =========================================================================
+% --- Override settings if per-folder settings file exists ---
+% =========================================================================
+c = check_settings_matfile(c, folderPath, folderName);
+
+% =========================================================================
+% --- Load first frame ---
+% =========================================================================
+inputVideoPath = fullfile(c.vidDir, folderName);
+assert(exist(inputVideoPath, 'file') == 2, ...
+    'run_arenaLabel: Input video not found:\n  %s', inputVideoPath);
+
+inputVideo    = VideoReader(inputVideoPath); %#ok<TNMLP>
+firstFrameRGB = read(inputVideo, 1);
+firstFrame    = double(rgb2gray(firstFrameRGB)) / 255;
+
+% =========================================================================
+% --- Interactive arena corner labeling ---
+% =========================================================================
+hFig = figure('Position', get(0, 'Screensize'));
+imshow(firstFrame);
+
+% -- Arena corners (polygon)
+annotation('textbox', [0.4, 0.4, 0.2, 0.2], ...
+    'String', 'Label grid floor corners with polygon!', ...
+    'color','y',...
+    'FontSize', 12, ...
+    'Interpreter', 'none', ...
+    'FitBoxToText', 'on');
+
+ArenaBox = drawpolygon();
+
+if isempty(ArenaBox.Position) || size(ArenaBox.Position, 1) < 4
+    close(hFig);
+    error('run_arenaLabel: Arena polygon requires at least 4 corners. Got %d.', size(ArenaBox.Position, 1));
+end
+Arena.Box.position = ArenaBox.Position;
+
+% --- Interactive port spout labeling (point) ---
+annotation('textbox', [0.4, 0.3, 0.2, 0.2], ...
+    'String', 'Label port spout with a point!', ...
+    'FontSize', 12, 'Interpreter', 'none', 'FitBoxToText', 'on');
+
+ArenaPort = drawpoint();
+
+if isempty(ArenaPort.Position)
+    close(hFig);
+    error('run_arenaLabel: No port position was labeled.');
+end
+Arena.Port.position = ArenaPort.Position;
+close(hFig);
+
+% --- Compute pixel-to-cm conversion factor ---
+% Measure all four side lengths, take the mean of the two shortest
+% (assumed to be the arena width sides)
+nCorners = size(Arena.Box.position, 1);
+arenaDim = zeros(1, nCorners);
+for edgeNum = 1:nCorners
+    nextCorner = mod(edgeNum, nCorners) + 1;
+    arenaDim(edgeNum) = pdist([Arena.Box.position(edgeNum, :); ...
+                                Arena.Box.position(nextCorner, :)], 'euclidean');
+end
+
+arenaDim = sort(arenaDim);
+pixel_width = mean(arenaDim(1:2));
+
+if pixel_width <= 0
+    error('run_arenaLabel: Computed pixel width is zero or negative. Check corner labels.');
+end
+
+Arena.conversionFactor = c.arenaWidth / pixel_width;
+fprintf('run_arenaLabel: Conversion factor = %.4f cm/pixel for %s\n', Arena.conversionFactor, folderName);
+
+% --- Save ---
+save(arenaFilePath, 'Arena');
+disp(['run_arenaLabel: Arena saved for ' folderName])
+end
+
