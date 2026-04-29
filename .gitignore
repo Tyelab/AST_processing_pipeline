@@ -1,5 +1,19 @@
-/Results
+cat > .gitignore << 'EOF'
+# MATLAB compiled files
+/*.mex*
+/*.asv
+/*.m~
+
+# Simulink
+/*.slxc
+/*.slx.autosave
+
+# Large data files
+/*.mat
+/*.fig
 /matfiles
 /*.mat
 /*.bak
 /*~
+/*.asv
+/*.mp4

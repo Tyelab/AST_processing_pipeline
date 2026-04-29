@@ -241,7 +241,7 @@ c.outputVisualizerVidFileSuffix = sprintf('_visualizer_%d.avi',c.labelVidLengthF
 
 
 
-%% ABOUT
+%% Generate Data
 
 if c.dataGen >= 1
     disp('Generating data...')
